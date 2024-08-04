@@ -9,9 +9,11 @@ char libraryPath[20];
 
 char letters[MAX_WORD_LENGTH + 1];
 char positions[MAX_WORD_LENGTH + 1];
-char incorrectLetters[26][2];
+int incorrectLetters[25] = {0};
 
 char guess[MAX_WORD_LENGTH + 1] = INITIAL_WORD;
+char **guesses = NULL;
+int guessCount = 0;
 
 
 int initialSetup() {
@@ -27,8 +29,7 @@ int initialSetup() {
 
     //Populate the incorrectLetters array with the alphabet
     for (size_t i = 0; i < 26; i++) {
-        incorrectLetters[i][0] = 'a' + i;
-        incorrectLetters[i][1] = 0;
+        incorrectLetters[i] = 'a' + i;
     }
 
     return 0;
@@ -64,7 +65,7 @@ int getLetters() {
     //Get the incorrect letters
     for (size_t i = 0; i < strlen(guess); i++) {
         if (strchr(letters, guess[i]) == NULL) {
-            incorrectLetters[guess[i] - 'a'][1] = 1;
+            incorrectLetters[guess[i] - 'a'] = 1;
         }
     }
 
@@ -121,6 +122,7 @@ int getPossibleWords() {
             return -1;
         }
 
+        int index = 0;
         while (fscanf(library, " %s", word) != EOF) {
             if (DEBUG) printf("[DEBUG] Word: %s\n", word);
 
@@ -132,41 +134,58 @@ int getPossibleWords() {
             if (DEBUG) printf("[DEBUG] Checking if word contains letters\n");
 
             // Check if the word contains the letters
+            int containsAllLetters = 1;
             for (size_t i = 0; i < strlen(word); i++) {
                 if (strchr(letters, word[i]) == NULL) {
-                    break;
-                }
-
-                if (i == strlen(word) - 1) {
-                    printf("Possible word: %s\n", word);
+                    containsAllLetters = 0;
+                    continue;
                 }
             }
 
-            //Check if the word contains any of the incorrect letters
+            if (containsAllLetters) {
+                if (DEBUG) printf("Possible word: %s\n", word);
+            }
+
+            // Check if the word contains any of the incorrect letters
+            int containsIncorrectLetters = 0;
             for (size_t i = 0; i < strlen(word); i++) {
-                if (incorrectLetters[word[i] - 'a'][1] == 1) {
-                    break;
-                }
-
-                if (i == strlen(word) - 1) {
-                    printf("Possible word: %s\n", word);
+                if (incorrectLetters[word[i] - 'a'] == 1) {
+                    containsIncorrectLetters = 1;
+                    continue;
                 }
             }
 
-            //Check if the word contains the correct letters in the correct positions
+            if (!containsIncorrectLetters) {
+                if (DEBUG) printf("Possible word: %s\n", word);
+            }
+
+            // Check if the word contains the correct letters in the correct positions
+            int correctPositions = 1;
             for (size_t i = 0; i < strlen(word); i++) {
                 if (positions[i] != '-' && word[i] != positions[i]) {
-                    break;
+                    correctPositions = 0;
+                    continue;
                 }
+            }
 
-                if (i == strlen(word) - 1) {
-                    printf("Possible word: %s\n", word);
+            if (correctPositions) {
+                if (DEBUG) printf("Possible word: %s\n", word);
+                guesses = realloc(guesses, (unsigned int)(index + 1) * sizeof(char*)); // Reallocate memory for guesses
+                if (guesses == NULL) {
+                    perror("Failed to reallocate memory");
+                    fclose(library);
+                    return -1;
                 }
+                guesses[index] = strdup(word); // Store the word in guesses array
+                index++;
             }
         }
 
+        guessCount = index;
         fclose(library);
     }
+
+    if (DEBUG) printf("[DEBUG] guessCount: %d\n", guessCount);
 
     return 0;
 }
@@ -190,6 +209,12 @@ int main() {
         printf("<-------------------->\n");
 
     } while (!solved);
+
+    // Free the guesses array
+    for (int i = 0; i <guessCount; i++) {
+        free(guesses[i]);
+    }
+    free(guesses);
 
     return 0;
 }
