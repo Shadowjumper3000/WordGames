@@ -144,7 +144,7 @@ int getPossibleWords() {
 
             //Check if the word contains any of the incorrect letters
             for (size_t i = 0; i < strlen(word); i++) {
-                if (strchr(incorrectLetters, word[i]) != NULL) {
+                if (incorrectLetters[word[i] - 'a'][1] == 1) {
                     break;
                 }
 
