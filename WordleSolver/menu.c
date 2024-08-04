@@ -9,10 +9,10 @@ char libraryPath[20];
 
 char letters[MAX_WORD_LENGTH + 1];
 char positions[MAX_WORD_LENGTH + 1];
-char guess[MAX_WORD_LENGTH + 1] = INITIAL_WORD;
-int numGuesses = 0;
+char incorrectLetters[26][2];
 
-int solved = 0;
+char guess[MAX_WORD_LENGTH + 1] = INITIAL_WORD;
+
 
 int initialSetup() {
 
@@ -25,22 +25,15 @@ int initialSetup() {
 
     sprintf(libraryPath, "Libraries/%s", libraryName);
 
-    return 0;
-}
-
-int probability(char *word) {
-
-    if (DEBUG) printf("[DEBUG] probability()\n");
-
-    int score = 0;
-    for (size_t i = 0; i < strlen(word); i++) {
-        if (word[i] == 'a' || word[i] == 'e' || word[i] == 'i' || word[i] == 'o' || word[i] == 'u') {
-            score++;
-        }
+    //Populate the incorrectLetters array with the alphabet
+    for (size_t i = 0; i < 26; i++) {
+        incorrectLetters[i][0] = 'a' + i;
+        incorrectLetters[i][1] = 0;
     }
 
     return 0;
 }
+
 
 int giveWord() {
 
@@ -50,6 +43,7 @@ int giveWord() {
 
     return 0;
 }
+
 
 int getLetters() {
 
@@ -66,6 +60,13 @@ int getLetters() {
     }
 
     if (DEBUG) printf("[DEBUG] strlen(letters): %d\n", strlen(letters));
+
+    //Get the incorrect letters
+    for (size_t i = 0; i < strlen(guess); i++) {
+        if (strchr(letters, guess[i]) == NULL) {
+            incorrectLetters[guess[i] - 'a'][1] = 1;
+        }
+    }
 
     // Get the positions of the letters
     printf("Enter the correct Positions for following Letters\n(Use \"-\" for unknown spots)\n");
@@ -98,6 +99,7 @@ int getLetters() {
     return 0;
 }
 
+
 int getPossibleWords() {
 
     if (DEBUG) printf("[DEBUG] getPossibleWords()\n");
@@ -122,6 +124,45 @@ int getPossibleWords() {
         while (fscanf(library, " %s", word) != EOF) {
             if (DEBUG) printf("[DEBUG] Word: %s\n", word);
 
+            if (strlen(word) != strlen(guess)) {
+                continue;
+            }
+
+            if (DEBUG) printf("[DEBUG] Word length matches guess length\n");
+            if (DEBUG) printf("[DEBUG] Checking if word contains letters\n");
+
+            // Check if the word contains the letters
+            for (size_t i = 0; i < strlen(word); i++) {
+                if (strchr(letters, word[i]) == NULL) {
+                    break;
+                }
+
+                if (i == strlen(word) - 1) {
+                    printf("Possible word: %s\n", word);
+                }
+            }
+
+            //Check if the word contains any of the incorrect letters
+            for (size_t i = 0; i < strlen(word); i++) {
+                if (strchr(incorrectLetters, word[i]) != NULL) {
+                    break;
+                }
+
+                if (i == strlen(word) - 1) {
+                    printf("Possible word: %s\n", word);
+                }
+            }
+
+            //Check if the word contains the correct letters in the correct positions
+            for (size_t i = 0; i < strlen(word); i++) {
+                if (positions[i] != '-' && word[i] != positions[i]) {
+                    break;
+                }
+
+                if (i == strlen(word) - 1) {
+                    printf("Possible word: %s\n", word);
+                }
+            }
         }
 
         fclose(library);
@@ -130,8 +171,9 @@ int getPossibleWords() {
     return 0;
 }
 
-int main() {
 
+int main() {
+    int solved = 0;
     if (DEBUG) printf("[DEBUG] main()\n");
 
     initialSetup();
