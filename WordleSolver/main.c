@@ -53,7 +53,6 @@ int initialSetup() {
     return 0;
 }
 
-
 int giveWord() {
     if (DEBUG) printf("[DEBUG] giveWord()\n");
 
@@ -93,7 +92,6 @@ int giveWord() {
     }
     return 0;
 }
-
 
 int getLetters() {
 
@@ -276,7 +274,6 @@ int getPossibleWords() {
 
     return 0;
 }
-
 
 int main() {
     if (DEBUG) printf("[DEBUG] main()\n");

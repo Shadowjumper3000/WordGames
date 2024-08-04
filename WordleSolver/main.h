@@ -2,7 +2,7 @@
 #define MAIN_H
 
 // DEBUG
-#define DEBUG 1
+#define DEBUG 0
 
 // SETTINGS
 #define MAX_WORD_LENGTH 5
