@@ -8,8 +8,8 @@
       "args": [],
       "stopAtEntry": false,
       "externalConsole": true,
-      "cwd": "c:/Users/User/OneDrive/Documents/Programming/Private/Projects/WordleSolver",
-      "program": "c:/Users/User/OneDrive/Documents/Programming/Private/Projects/WordleSolver/build/Debug/outDebug",
+      "cwd": "c:/Users/User/OneDrive/Documents/Programming/Private/Projects/WordGames/WordleSolver",
+      "program": "c:/Users/User/OneDrive/Documents/Programming/Private/Projects/WordGames/WordleSolver/build/Debug/outDebug",
       "MIMode": "gdb",
       "miDebuggerPath": "gdb",
       "setupCommands": [
