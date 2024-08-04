@@ -9,11 +9,12 @@ char libraryPath[20];
 
 char letters[MAX_WORD_LENGTH + 1];
 char positions[MAX_WORD_LENGTH + 1];
-int incorrectLetters[25] = {0};
+unsigned int incorrectLetters[26] = {0};
 
-char guess[MAX_WORD_LENGTH + 1] = INITIAL_WORD;
 char **guesses = NULL;
-int guessCount = 0;
+int guessCount = 1;
+
+int solved = 0;
 
 
 int initialSetup() {
@@ -32,16 +33,48 @@ int initialSetup() {
         incorrectLetters[i] = 'a' + i;
     }
 
+    // Set the initial guess
+    guesses = (char **)malloc((unsigned int)guessCount * sizeof(char *));
+    if (guesses == NULL) {
+        perror("Failed to allocate memory");
+        return -1;
+    }
+    guesses[0] = (char *)malloc(MAX_WORD_LENGTH * sizeof(char));
+    if (guesses[0] == NULL) {
+        perror("Failed to allocate memory");
+        free(guesses);
+        return -1;
+    }
+    strcpy(guesses[0], INITIAL_WORD);
+
     return 0;
 }
 
 
 int giveWord() {
-
     if (DEBUG) printf("[DEBUG] giveWord()\n");
 
-    printf("A likely word is: %s\t\n", guess);
+    printf("A likely word is: %s\t\n", guesses[0]);
 
+
+    char response;
+    int i = 0;
+
+    do {
+        printf("Do you need a different word?\n");
+        scanf(" %c", &response);
+        if (response == 'y' || response == 'Y') {
+            i++;
+            printf("A likely word is: %s\t\n", guesses[i]);
+        }
+    } while (response == 'y' || response == 'Y');
+
+    printf("Is the word correct?\n");
+    scanf(" %c", &response);
+    if (response == 'y' || response == 'Y') {
+        printf("The word is %s\n", guesses[i]);
+        solved = 1;
+    }
     return 0;
 }
 
@@ -56,16 +89,16 @@ int getLetters() {
 
     // Check if the input length is greater than MAX_WORD_LENGTH
     if (strlen(letters) > MAX_WORD_LENGTH) {
-        printf("Error: Input is longer than %d letters.\n", MAX_WORD_LENGTH);
+        printf("[ERROR] Input is longer than %d letters.\n", MAX_WORD_LENGTH);
         return -1;
     }
 
     if (DEBUG) printf("[DEBUG] strlen(letters): %d\n", strlen(letters));
 
     //Get the incorrect letters
-    for (size_t i = 0; i < strlen(guess); i++) {
-        if (strchr(letters, guess[i]) == NULL) {
-            incorrectLetters[guess[i] - 'a'] = 1;
+    for (size_t i = 0; i < strlen(guesses[0]); i++) {
+        if (strchr(letters, guesses[0][i]) == NULL) {
+            incorrectLetters[guesses[0][i] - 'a'] = 1;
         }
     }
 
@@ -100,90 +133,122 @@ int getLetters() {
     return 0;
 }
 
-
 int getPossibleWords() {
 
     if (DEBUG) printf("[DEBUG] getPossibleWords()\n");
 
     if (letters[0] == '\0') {
-        printf("Enter some letters to recieve possible words\n");
+        printf("[ERROR] Enter some letters to receive possible words\n");
+        return 0;
     }
-    
-    if (letters[0] != '\0') {
 
-        FILE *library = fopen(libraryPath, "r");
+    FILE *library = fopen(libraryPath, "r");
+    if (library == NULL) {
+        printf("[ERROR] Could not open library file\n");
+        return -1;
+    }
 
-        char word[MAX_WORD_LENGTH + 1];
+    char word[MAX_WORD_LENGTH + 1];
+    int index = 0;
 
-        if (DEBUG) printf("[DEBUG] Opening library file %s\n", libraryName);
+    while (fscanf(library, " %s", word) != EOF) {
+        if (DEBUG) printf("[DEBUG] Word: %s\n", word);
 
-        if (library == NULL) {
-            printf("Error: Could not open library file\n");
+        if (strlen(word) != strlen(guesses[0])) {
+            continue;
+        }
+        if (DEBUG) printf("[DEBUG] Word length matches guess length\n");
+
+        if (DEBUG) printf("[DEBUG] Checking if word contains correct letters\n");
+        int containsAllLetters = 1;
+        int letterCounts[26] = {0}; // Array to count occurrences of each letter in the word
+        int requiredCounts[26] = {0}; // Array to count occurrences of each letter in the given letters
+
+        // Count occurrences of each letter in the word
+        for (size_t i = 0; i < strlen(word); i++) {
+            letterCounts[word[i] - 'a']++;
+        }
+
+        // Count occurrences of each letter in the given letters
+        for (size_t i = 0; i < strlen(letters); i++) {
+            requiredCounts[letters[i] - 'a']++;
+        }
+
+        // Check if the word contains the correct number of each letter
+        for (size_t i = 0; i < 26; i++) {
+            if (letterCounts[i] < requiredCounts[i]) {
+                containsAllLetters = 0;
+                if (DEBUG) printf("[DEBUG] Word does not contain all correct letters\n");
+                break;
+            }
+        }
+
+        if (!containsAllLetters) {
+            continue;
+        }
+
+        if (DEBUG) printf("[DEBUG] Checking if word contains incorrect letters\n");
+        // Check if the word contains any of the incorrect letters
+        int containsIncorrectLetters = 0;
+        for (size_t i = 0; i < strlen(word); i++) {
+            if (incorrectLetters[word[i] - 'a'] == 1) {
+                containsIncorrectLetters = 1;
+                if (DEBUG) printf("[DEBUG] Word contains incorrect letters\n");
+                break;
+            }
+        }
+        if (containsIncorrectLetters) {
+            continue;
+        }
+
+        if (DEBUG) printf("[DEBUG] Checking if word matches correct positions\n");
+        // Check if the word contains the correct letters in the correct positions
+        int correctPositions = 1;
+        for (size_t i = 0; i < strlen(word); i++) {
+            if (positions[i] != '-' && word[i] != positions[i]) {
+                correctPositions = 0;
+                if (DEBUG) printf("[DEBUG] Word does not match correct positions\n");
+                break;
+            }
+        }
+        if (!correctPositions) {
+            continue;
+        }
+
+        if (DEBUG) printf("[DEBUG] Possible word: %s\n", word);
+
+        // Check if the word is already in the guesses array
+        int alreadyExists = 0;
+        for (int i = 0; i < index; i++) {
+            if (strcmp(guesses[i], word) == 0) {
+                alreadyExists = 1;
+                break;
+            }
+        }
+        if (alreadyExists) {
+            continue;
+        }
+
+        // Correct reallocation of guesses array and handling potential memory leak
+        char **temp = realloc(guesses, (unsigned int)(index + 1) * sizeof(char*));
+        if (temp == NULL) {
+            perror("Failed to reallocate memory");
+            fclose(library);
             return -1;
         }
+        guesses = temp;
 
-        int index = 0;
-        while (fscanf(library, " %s", word) != EOF) {
-            if (DEBUG) printf("[DEBUG] Word: %s\n", word);
-
-            if (strlen(word) != strlen(guess)) {
-                continue;
-            }
-
-            if (DEBUG) printf("[DEBUG] Word length matches guess length\n");
-            if (DEBUG) printf("[DEBUG] Checking if word contains letters\n");
-
-            // Check if the word contains the letters
-            int containsAllLetters = 1;
-            for (size_t i = 0; i < strlen(word); i++) {
-                if (strchr(letters, word[i]) == NULL) {
-                    containsAllLetters = 0;
-                    continue;
-                }
-            }
-
-            if (containsAllLetters) {
-                if (DEBUG) printf("Possible word: %s\n", word);
-            }
-
-            // Check if the word contains any of the incorrect letters
-            int containsIncorrectLetters = 0;
-            for (size_t i = 0; i < strlen(word); i++) {
-                if (incorrectLetters[word[i] - 'a'] == 1) {
-                    containsIncorrectLetters = 1;
-                    continue;
-                }
-            }
-
-            if (!containsIncorrectLetters) {
-                if (DEBUG) printf("Possible word: %s\n", word);
-            }
-
-            // Check if the word contains the correct letters in the correct positions
-            int correctPositions = 1;
-            for (size_t i = 0; i < strlen(word); i++) {
-                if (positions[i] != '-' && word[i] != positions[i]) {
-                    correctPositions = 0;
-                    continue;
-                }
-            }
-
-            if (correctPositions) {
-                if (DEBUG) printf("Possible word: %s\n", word);
-                guesses = realloc(guesses, (unsigned int)(index + 1) * sizeof(char*)); // Reallocate memory for guesses
-                if (guesses == NULL) {
-                    perror("Failed to reallocate memory");
-                    fclose(library);
-                    return -1;
-                }
-                guesses[index] = strdup(word); // Store the word in guesses array
-                index++;
-            }
+        guesses[index] = strdup(word); // Store the word in guesses array
+        if (guesses[index] == NULL) {
+            perror("Failed to allocate memory for word");
+            fclose(library);
+            return -1;
         }
-
-        guessCount = index;
-        fclose(library);
+        index++;
     }
+
+    guessCount = index;
+    fclose(library);
 
     if (DEBUG) printf("[DEBUG] guessCount: %d\n", guessCount);
 
@@ -192,7 +257,6 @@ int getPossibleWords() {
 
 
 int main() {
-    int solved = 0;
     if (DEBUG) printf("[DEBUG] main()\n");
 
     initialSetup();
@@ -203,6 +267,9 @@ int main() {
         if (DEBUG) printf("[DEBUG] entering main loop\n");
 
         giveWord();
+        if (solved) {
+            break;
+        }
         getLetters();
         getPossibleWords();
 
